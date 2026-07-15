@@ -4565,6 +4565,28 @@ function _checkDeliverURL() {
   };
 }
 _checkDeliverURL();
+
+// ─── Thank You / Conversion Page (for Google Ads conversion tracking) ───
+// URL: cardswapindia.com/?thankyou=1  → shows confirmation, then redirects home.
+function _checkThankYouURL() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('thankyou') !== '1') return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:var(--overlay-bg,rgba(0,0,0,0.8));backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="background:var(--white,#fff);border-radius:20px;width:100%;max-width:380px;padding:32px 24px;text-align:center;animation:sheetIn .35s cubic-bezier(.32,1,.28,1);">
+      <div style="font-size:52px;margin-bottom:12px">✅</div>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:8px;">Thank you!</h2>
+      <p style="font-size:15px;opacity:.75;margin-bottom:20px;line-height:1.5;">Your order has been received. Redirecting you to the homepage…</p>
+      <div style="font-size:13px;opacity:.5;">Taking you back in a moment</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  setTimeout(() => { window.location.href = '/'; }, 3000);
+}
+_checkThankYouURL();
+
 document.addEventListener('DOMContentLoaded', () => {
   _loadSession();
   _expireStaleReferralCredits();
