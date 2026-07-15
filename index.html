@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CardSwap India — buy discounted gift cards, more than 60% off. Pay via UPI or Crypto, get your code within 30 minutes. 100+ brands, every card verified." />
   <title>CardSwap India</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
@@ -1284,7 +1285,7 @@
     </div>
     <div class="faq-item">
       <button class="faq-q">What if the card code doesn't work? <span class="faq-chevron">▾</span></button>
-      <div class="faq-a">We personally verify every code before sending. But if something isn't working — <strong>full refund within 72 hours, no questions asked</strong>, back to your UPI ID or crypto wallet. Email us at <a href="mailto:support@cardswapindia.com" style="color:var(--accent);font-weight:700">support@cardswapindia.com</a> with a screenshot.</div>
+      <div class="faq-a">We personally verify every code before sending. But if something isn't working — <strong>full refund within 72 hours, no questions asked</strong>, back to your UPI ID or crypto wallet. Email us at <a href="mailto:cardswapindia@gmail.com" style="color:var(--accent);font-weight:700">cardswapindia@gmail.com</a> with a screenshot.</div>
     </div>
     <div class="faq-item">
       <button class="faq-q">How long does delivery take? <span class="faq-chevron">▾</span></button>
@@ -1314,7 +1315,7 @@
   <strong id="js-footer-name">CardSwap India</strong><br />
   Discounted gift cards, delivered fast. India's trusted gift card store.
   <div class="footer-contact">
-    <a href="mailto:support@cardswapindia.com">📧 support@cardswapindia.com</a>
+    <a href="mailto:cardswapindia@gmail.com">📧 cardswapindia@gmail.com</a>
     <a href="https://wa.me/918899325855" target="_blank">💬 WhatsApp Support</a>
   </div>
   <div class="footer-links">
@@ -2203,7 +2204,7 @@ document.getElementById('js-nav-email').href          = `mailto:${STORE.email}`;
 document.title = STORE.name;
 // Support link in FAQ
 const _sl = document.getElementById('faq-support-link');
-if (_sl) _sl.href = `mailto:support@cardswapindia.com?subject=Gift Card Issue — Order Support&body=Hi,%0A%0AOrder Ref: %0ACard: %0AIssue: %0A%0APlease help. Thank you.`;
+if (_sl) _sl.href = `mailto:cardswapindia@gmail.com?subject=Gift Card Issue — Order Support&body=Hi,%0A%0AOrder Ref: %0ACard: %0AIssue: %0A%0APlease help. Thank you.`;
 
 // ─── Cards & Filters ───
 const HIDDEN_CATS = new Set(['Wallet']); // categories hidden from filter tabs but visible in All/search
@@ -4353,7 +4354,7 @@ const POLICIES = {
     <h3>6. Limitation of Liability</h3>
     <p>Our liability is limited to the amount paid for the specific order in question. We are not liable for indirect losses.</p>
     <h3>7. Contact</h3>
-    <p>Email: support@cardswapindia.com · WhatsApp: +91 88993 25855</p>`,
+    <p>Email: cardswapindia@gmail.com · WhatsApp: +91 88993 25855</p>`,
 
   privacy: `<h2>Privacy Policy</h2>
     <p>Last updated: June 2026</p>
@@ -4366,9 +4367,9 @@ const POLICIES = {
     <h3>Data Storage</h3>
     <p>We use Firebase (Google Cloud) to store your account, session, cart, and order data securely in the cloud. We do not use tracking pixels or advertising cookies.</p>
     <h3>Your Rights</h3>
-    <p>You can request deletion of your data by emailing support@cardswapindia.com. We will respond within 7 business days.</p>
+    <p>You can request deletion of your data by emailing cardswapindia@gmail.com. We will respond within 7 business days.</p>
     <h3>Contact</h3>
-    <p>Email: support@cardswapindia.com</p>`,
+    <p>Email: cardswapindia@gmail.com</p>`,
 
   refund: `<h2>Refund Policy</h2>
     <p>Last updated: June 2026</p>
@@ -4379,7 +4380,7 @@ const POLICIES = {
     <h3>Not Eligible for Refund</h3>
     <p>❌ Change of mind after delivery<br/>❌ Code was successfully redeemed by you<br/>❌ Issues caused by the brand's platform (e.g. app down)<br/>❌ Incorrect denomination selected by customer</p>
     <h3>How to Claim</h3>
-    <p>Email support@cardswapindia.com with your order reference and a screenshot of the issue. We aim to resolve all refund requests within 72 hours.</p>
+    <p>Email cardswapindia@gmail.com with your order reference and a screenshot of the issue. We aim to resolve all refund requests within 72 hours.</p>
     <h3>Refund Method</h3>
     <p>Refunds are returned to the original payment method — UPI ID or crypto wallet used for purchase.</p>`
 };
@@ -5080,14 +5081,30 @@ function setTxnFilter(f) {
   _renderTxnList();
 }
 
+// Effective status for display: a Pending order older than 4 hours is shown as Failed.
+// (Display-only — does not modify the Firestore record. Delivered orders stay Delivered.)
+const _AUTO_FAIL_MS = 4 * 60 * 60 * 1000; // 4 hours
+function _effectiveStatus(o) {
+  const raw = o.status || '';
+  if (raw.includes('Delivered')) return 'Delivered ✅';
+  if (raw.includes('Failed') || raw.includes('Cancel')) return 'Failed ❌';
+  if (raw.includes('Pending')) {
+    const created = o.timestamp?.seconds ? o.timestamp.seconds * 1000
+                  : o.date ? new Date(o.date).getTime() : Date.now();
+    if (Date.now() - created >= _AUTO_FAIL_MS) return 'Failed ❌';
+    return 'Pending ⏳';
+  }
+  return raw;
+}
+
 function _renderTxnList() {
   const list = document.getElementById('txnpage-list');
   if (!list) return;
   const filtered = _allTxnOrders.filter(o => {
-    const s = (o.status || '').toLowerCase();
+    const s = _effectiveStatus(o).toLowerCase();
     if (_txnFilter === 'successful') return s.includes('delivered');
     if (_txnFilter === 'pending')    return s.includes('pending');
-    if (_txnFilter === 'failed')     return s.includes('failed') || s.includes('cancel');
+    if (_txnFilter === 'failed')     return s.includes('failed');
     return true;
   });
   if (!filtered.length) {
@@ -5098,9 +5115,11 @@ function _renderTxnList() {
     const ts = o.timestamp?.seconds
       ? new Date(o.timestamp.seconds * 1000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
       : o.date ? new Date(o.date).toLocaleDateString('en-IN') : '—';
-    const isDelivered = (o.status || '').includes('Delivered');
-    const isPending   = (o.status || '').includes('Pending');
-    const statusColor = isDelivered ? 'var(--green)' : isPending ? '#FF9800' : 'var(--muted)';
+    const eff = _effectiveStatus(o);
+    const isDelivered = eff.includes('Delivered');
+    const isPending   = eff.includes('Pending');
+    const isFailed    = eff.includes('Failed');
+    const statusColor = isDelivered ? 'var(--green)' : isPending ? '#FF9800' : isFailed ? '#E53935' : 'var(--muted)';
     const viewBtn = isDelivered
       ? `<button onclick="viewGiftCardFromTxn('${o.id}')" style="margin-top:6px;padding:5px 12px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">🎁 View Gift Card</button>`
       : '';
@@ -5111,7 +5130,7 @@ function _renderTxnList() {
           <div class="prof-hist-label" style="font-weight:700">${o.card || '—'}</div>
           <div class="prof-hist-sub">${ts} · ${o.method || ''}</div>
           <div class="prof-hist-sub" style="font-size:10px;opacity:.7">${o.ref || ''}</div>
-          <div style="font-size:11px;font-weight:800;color:${statusColor};margin-top:2px">${o.status || ''}</div>
+          <div style="font-size:11px;font-weight:800;color:${statusColor};margin-top:2px">${eff}</div>
           ${viewBtn}
         </div>
         <div class="prof-hist-amt prof-hist-amt-order" style="white-space:nowrap">${fmt(Number(o.amount) || 0)}</div>
