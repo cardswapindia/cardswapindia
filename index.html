@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="CardSwap India — buy discounted gift cards, more than 60% off. Pay via UPI or Crypto, get your code on-site within 30 minutes. 100+ brands, every card verified." />
   <title>CardSwap India</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='4' y='8' width='40' height='32' rx='8' fill='%23B24BFF'/%3E%3Cpath d='M16 20h14l-4-4M32 28H18l4 4' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='6' y='9' width='30' height='21' rx='5.5' fill='%237C3AED' opacity='.38' transform='rotate(-9 21 19.5)'/%3E%3Crect x='12' y='16' width='30' height='21' rx='5.5' fill='%237C3AED'/%3E%3Ccircle cx='20' cy='26.5' r='3.4' fill='white'/%3E%3Cpath d='M27 26.5h9' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -1977,7 +1977,7 @@
 
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="#" onclick="goHomeTop();return false;"><svg viewBox="0 0 48 48" style="width:26px;height:26px;flex-shrink:0"><rect x="4" y="8" width="40" height="32" rx="8" fill="var(--accent)"/><path d="M16 20h14l-4-4M32 28H18l4 4" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-logo-name" id="js-store-name"><span style="color:#E65100">Card</span><span style="color:var(--text)">Swap</span> <span style="color:#E65100">India</span></span></a>
+  <a class="nav-logo" href="#" onclick="goHomeTop();return false;"><svg viewBox="0 0 48 48" style="width:26px;height:26px;flex-shrink:0"><rect x="6" y="9" width="30" height="21" rx="5.5" fill="var(--accent)" opacity=".38" transform="rotate(-9 21 19.5)"/><rect x="12" y="16" width="30" height="21" rx="5.5" fill="var(--accent)"/><circle cx="20" cy="26.5" r="3.4" fill="#fff"/><path d="M27 26.5h9" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg><span class="nav-logo-name" id="js-store-name"><span style="color:#E65100">Card</span><span style="color:var(--text)">Swap</span> <span style="color:#E65100">India</span></span></a>
   <div class="nav-right">
     <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle day/night mode">
       <span class="theme-icon" id="theme-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;display:inline-block;vertical-align:-.16em;flex-shrink:0"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></span>
@@ -3164,6 +3164,54 @@ const HIDDEN_CATS = new Set(['Wallet']); // categories hidden from filter tabs b
 // gift cards and live on their own page — excluded entirely from the
 // gift-card Home grid, Categories page and brand filter.
 const GIFT_CARDS = CARDS.filter(c => c.category !== 'Services');
+
+// ─── Brand logo loading with graceful fallback ──────────────────────
+// Many brand favicons served via the old Google favicon endpoint were
+// low-resolution (blurry when scaled up) or missing entirely (shown as a
+// generic placeholder). This pulls a higher-res icon first, falls back to
+// the original source if that fails, and finally always renders a clean
+// branded monogram badge so a logo is never blank or broken-looking.
+function _logoDomain(googleLogoUrl) {
+  try {
+    const inner = new URL(googleLogoUrl).searchParams.get('url');
+    if (inner) return new URL(inner).hostname.replace(/^www\./, '');
+  } catch (e) {}
+  return null;
+}
+function _iconHorseUrl(googleLogoUrl) {
+  const domain = _logoDomain(googleLogoUrl);
+  return domain ? `https://icon.horse/icon/${domain}` : googleLogoUrl;
+}
+function _monogramDataUri(card) {
+  const glyph = (card.emoji || (card.brand || '?').charAt(0) || '?');
+  const bg = card.bgColor || '#5B4FE8';
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>`
+    + `<rect width='64' height='64' rx='16' fill='${bg}'/>`
+    + `<text x='32' y='41' font-size='28' text-anchor='middle' font-family='Segoe UI Emoji,Apple Color Emoji,sans-serif'>${glyph}</text>`
+    + `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+// Called from onerror. First failure: drop back to the original logo URL.
+// Second failure: swap in the monogram badge for good (onerror cleared so
+// it can't loop).
+function _logoFallback(img, origSrc, monoSrc) {
+  if (img.dataset.fbStage !== '1') {
+    img.dataset.fbStage = '1';
+    img.src = origSrc;
+  } else {
+    img.onerror = null;
+    img.src = monoSrc;
+  }
+}
+// Returns a ready-to-insert <img> tag with the fallback chain wired up.
+// extraAttrs is an optional string of additional HTML attributes (class, style, etc).
+function _logoImgTag(card, extraAttrs) {
+  const hi = _iconHorseUrl(card.logo).replace(/"/g, '%22');
+  const orig = (card.logo || '').replace(/"/g, '%22');
+  const mono = _monogramDataUri(card);
+  const alt = (card.brand || '').replace(/"/g, '&quot;');
+  return `<img src="${hi}" alt="${alt}" loading="lazy" ${extraAttrs || ''} onerror="_logoFallback(this,'${orig}','${mono}')">`;
+}
 const allCats = ['All', ...new Set(GIFT_CARDS.map(c => c.category).filter(c => !HIDDEN_CATS.has(c)))];
 let activeCat  = 'All';
 let searchTerm = '';
@@ -3642,7 +3690,7 @@ function _renderCardGrid(grid, list, opts) {
     if (card.inStock) el.onclick = () => openModal(idx);
     el.innerHTML = `
       <div class="card-row-thumb">
-        <img src="${card.logo}" alt="${card.brand}" loading="lazy" onerror="this.style.display='none'" />
+        ${_logoImgTag(card)}
       </div>
       <div class="card-row-body">
         <div class="card-row-name">${card.brand}</div>
@@ -3801,7 +3849,7 @@ function addSelectedToCart() {
     cartItems.push({ id: ++cartIdCtr, card: activeCard, amount: activeAmount, price: activePrice, qty: activeQty });
   }
   // Fly-to-cart animation using the card's logo
-  const flySrc = activeCard.logo || '';
+  const flySrc = activeCard.logo ? _iconHorseUrl(activeCard.logo) : '';
   const startEl = document.querySelector('#s0-cart-btn') || document.querySelector('.modal .card-img') || null;
   if (flySrc) flyToCart(flySrc, startEl);
 
@@ -4586,7 +4634,9 @@ function openModal(idx) {
   document.getElementById('s0-cat').textContent   = card.category;
   const logoImg = document.getElementById('s0-visual-logo-img');
   logoImg.style.display = '';
-  logoImg.src = card.logo || '';
+  logoImg.dataset.fbStage = '';
+  logoImg.onerror = () => _logoFallback(logoImg, card.logo || '', _monogramDataUri(card));
+  logoImg.src = card.logo ? _iconHorseUrl(card.logo) : _monogramDataUri(card);
   logoImg.alt = card.brand;
   const platEl = document.getElementById('s0-plat');
   // Never show the wholesale supplier (Hubble/Woohoo/Magicpin) to customers —
@@ -5785,7 +5835,7 @@ function buildFeaturedCarousel() {
         <div class="fc-card" onclick="openModal(${idx})" role="button" tabindex="0"
              onkeydown="if(event.key==='Enter')openModal(${idx})">
           <div class="fc-logo" style="background:${card.bgColor}1A;border:1px solid ${card.bgColor}55">
-            <img src="${card.logo}" alt="${card.brand}" loading="lazy" onerror="this.style.display='none'">
+            ${_logoImgTag(card)}
           </div>
           <div class="fc-badge">${badge}</div>
           <h3>${card.brand}</h3>
@@ -9466,12 +9516,12 @@ document.addEventListener('DOMContentLoaded', () => {
 ══════════════════════════════════════════ -->
 <div id="page-services" class="page">
   <div class="cat-page-header">
-    <h2 class="section-title" style="margin:0">Services</h2>
+    <h2 class="section-title" style="margin:0">OTT</h2>
     <p class="page-sub" style="margin:4px 0 0">OTT subscriptions &amp; family plans at a discount</p>
   </div>
 
   <div class="svc-how">
-    <div class="svc-how-title">How Services work</div>
+    <div class="svc-how-title">How OTT works</div>
     <p class="svc-how-sub">Different from gift cards — there's no code to redeem. Here's the process:</p>
     <div class="svc-how-viewport" id="page-svc-how-viewport">
       <div class="svc-how-track" id="page-svc-how-track"></div>
@@ -9480,7 +9530,7 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 
   <div class="cards-header" style="margin-top:8px">
-    <h2>Available Services</h2>
+    <h2>Available OTT Plans</h2>
   </div>
   <div class="cards-grid" id="svc-grid"></div>
 </div>
@@ -10008,7 +10058,7 @@ document.addEventListener('DOMContentLoaded', () => {
   </button>
   <button class="bnav-btn" id="bnav-services" onclick="showPage('services')">
     <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.63 22 9.24 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.24 8.91 8.63 12 2"/></svg></span>
-    <span>Services</span>
+    <span>OTT</span>
   </button>
   <button class="bnav-btn" id="bnav-coupons" onclick="showPage('coupons')">
     <span class="bn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a2.5 2.5 0 0 0 0 5v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-3a2.5 2.5 0 0 0 0-5z"/><line x1="14" y1="7" x2="14" y2="9"/><line x1="14" y1="12" x2="14" y2="14"/><line x1="14" y1="17" x2="14" y2="19"/></svg></span>
@@ -10765,7 +10815,7 @@ function _renderGiftCard({ brand, amount, number, pin, used, ts, orderId, itemId
   return `
     <div style="background:var(--white);border:1.5px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow);${used ? 'opacity:.6' : ''}">
       <div style="background:${bg};padding:16px 18px;display:flex;align-items:center;gap:12px">
-        ${logo ? `<div style="width:42px;height:42px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0"><img src="${logo}" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'"></div>` : ''}
+        ${logo ? `<div style="width:42px;height:42px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">${_logoImgTag(card || { logo, brand, bgColor: bg }, 'style="width:32px;height:32px;object-fit:contain"')}</div>` : ''}
         <div style="flex:1;min-width:0">
           <div style="font-weight:800;font-size:16px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2);word-break:break-word">${brand || 'Gift Card'}</div>
           <div style="font-size:12px;color:rgba(255,255,255,.9);font-weight:600">${ts}</div>
